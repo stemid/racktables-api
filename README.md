@@ -6,6 +6,10 @@ I wanted to expand on the original rtapi and didn't like the coding standard for
 
 So there is some left to rewrite and much left to add. 
 
+## Original Author
+
+Robert Vojcik (robert@vojcik.net)
+
 ## TODO
 
   * Support for containers, like virtual clusters
