@@ -13,6 +13,7 @@ Robert Vojcik (robert@vojcik.net)
 ## TODO
 
   * Support for containers, like virtual clusters
+  * Rewrite all calls to MySQLdb to use their own parameter expansion
 
 # Example
 
