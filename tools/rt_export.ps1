@@ -1,5 +1,7 @@
 # This exports all VMs from vSphere with information relevant to a Racktables import.
 # by Stefan Midjich <swehack@gmail.com>
+#
+# For reference: https://pubs.vmware.com/vsphere-55/topic/com.vmware.powercli.cmdletref.doc/VirtualMachine.html
 
 add-pssnapin VMware.VimAutomation.Core
 Set-PowerCLIConfiguration -invalidCertificateAction 'ignore' -confirm:$false
