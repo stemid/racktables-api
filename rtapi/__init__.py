@@ -498,7 +498,12 @@ class RTObject:
 
     def LinkVirtualHypervisor(self,object_id,virtual_id):
         '''Assign virtual server to correct hypervisor'''
-        sql = "SELECT child_entity_id FROM EntityLink WHERE parent_entity_id = %d AND child_entity_id = %d" % (object_id,virtual_id)
+        sql = '''
+        SELECT child_entity_id FROM EntityLink 
+        WHERE parent_entity_id = %d AND 
+        child_entity_id = %d''' % (
+            object_id,virtual_id
+        )
         result = self.db_query_one(sql)
 
         if result == None:
