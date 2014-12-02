@@ -72,10 +72,15 @@ class RTObject:
         '''SQL function which return ID of last inserted row.'''
         return self.dbresult.lastrowid
     
-    def ListObjects(self):
-        '''List all objects'''
-        sql = 'SELECT name FROM Object'
-        return "Found " + str(len(self.db_query_all(sql))) +" objects in database" 
+    #def ListObjects(self):
+        #'''List all objects'''
+        #sql = 'SELECT name FROM Object'
+        #return "Found " + str(len(self.db_query_all(sql))) +" objects in database" 
+    @property
+    def Objects(self):
+        sql = 'select id, name from Object'
+        objects = self.db_query_all(sql)
+        return objects
 
     @property
     def ObjectTypes(self):
@@ -226,21 +231,22 @@ class RTObject:
             new_value = ''
             if same_flag == "no":
                 if attribute_type == "string":
-                    sql = "UPDATE AttributeValue SET string_value = '%s' WHERE object_id = %d AND attr_id = %d AND object_tid = %d" % (string_value, object_id, attr_id, object_tid)
+                    sql = "UPDATE AttributeValue SET string_value = %s WHERE object_id = %s AND attr_id = %s AND object_tid = %s"
                     new_value = string_value
+                    self.db_insert(sql, (string_value, object_id, attr_id, object_tid, ))
                 if attribute_type == "uint":
                     sql = "UPDATE AttributeValue SET uint_value = %s WHERE object_id = %s AND attr_id = %s AND object_tid = %s"
                     new_value = uint_value
-
-                self.db_insert(sql, (uint_value, object_id, attr_id, object_tid, ))
+                    self.db_insert(sql, (uint_value, object_id, attr_id, object_tid, ))
 
         else:
             # Attribute not exist, insert new
             if string_value == "NULL":
-                sql = "INSERT INTO AttributeValue (object_id,object_tid,attr_id,uint_value) VALUES (%d,%d,%d,%d)" % (object_id,object_tid,attr_id,uint_value)
+                sql = "INSERT INTO AttributeValue (object_id,object_tid,attr_id,uint_value) VALUES (%s,%s,%s,%s)"
+                self.db_insert(sql, (object_id,object_tid,attr_id,uint_value,))
             else:
                 sql = "INSERT INTO AttributeValue (object_id,object_tid,attr_id,string_value) VALUES (%s,%s,%s,%s)"
-            self.db_insert(sql, (object_id, object_tid, attr_id, string_value,))
+                self.db_insert(sql, (object_id, object_tid, attr_id, string_value,))
 
     def GetAttributeId(self,searchstring):
         '''Search racktables database and get attribud id based on search string as argument'''

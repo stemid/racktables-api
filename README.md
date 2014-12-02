@@ -17,7 +17,7 @@ Robert Vojcik (robert@vojcik.net)
 
 # Example
 
-The API frontend is still unchanged from the original version. 
+The API frontend has changed some from the original. 
 
     import ipaddr
     import MySQLdb
@@ -35,4 +35,5 @@ The API frontend is still unchanged from the original version.
     rt = rtapi.RTObject(db)
 
     # List all objects from database
-    print rt.ListObjects()
+    for (object_id, object_name) in rt.Objects:
+      print object_id, object_name
