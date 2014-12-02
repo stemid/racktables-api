@@ -96,24 +96,24 @@ class RTObject:
     # Object methotds
     def ObjectExistST(self,service_tag):
         '''Check if object exist in database based on asset_no'''
-        sql = 'SELECT name FROM Object WHERE asset_no = \''+service_tag+'\''
-        if self.db_query_one(sql) == None:
+        sql = 'SELECT name FROM Object WHERE asset_no = %s'
+        if self.db_query_one(sql, (service_tag,)) == None:
             return False
         else:
             return True
     
     def ObjectExistName(self,name):
         '''Check if object exist in database based on name'''
-        sql = 'select id from Object where name = \''+name+'\''
-        if self.db_query_one(sql) == None:
+        sql = 'select id from Object where name = %s'
+        if self.db_query_one(sql, (name, )) == None:
             return False
         else:
             return True
 
     def ObjectExistSTName(self,name,asset_no):
         '''Check if object exist in database based on name'''
-        sql = "SELECT id FROM Object WHERE name = '%s' AND asset_no = '%s'" % (name,asset_no)
-        if self.db_query_one(sql) == None:
+        sql = "SELECT id FROM Object WHERE name = %s AND asset_no = %s"
+        if self.db_query_one(sql, (name, asset_no,)) == None:
             return False
         else:
             return True
@@ -134,19 +134,23 @@ class RTObject:
     
     def UpdateObjectComment(self,object_id,comment):
         '''Update comment on object'''
-        sql = "UPDATE Object SET comment = '%s' where id = %d" % (comment, object_id)
-        self.db_insert(sql)
+        sql = "UPDATE Object SET comment = %s where id = %s"
+        self.db_insert(sql, (comment, object_id,))
 
     def UpdateObjectName(self,object_id,name):
         '''Update name on object'''
-        sql = "UPDATE Object SET name = '%s' where id = %d" % (name, object_id)
-        self.db_insert(sql)
+        old_name = self.GetObjectName(object_id)
+        sql = "UPDATE Object SET name = '%s' where id = %s"
+        self.db_insert(sql, (name, object_id,))
+        self.InsertLog(object_id, 'Name changed from %s to %s' % (
+            old_name, name
+        ))
 
     def GetObjectName(self,object_id):
         '''Translate Object ID to Object Name'''
         #Get interface id
-        sql = "SELECT name FROM Object WHERE id = %d" % (object_id)
-        result = self.db_query_one(sql)
+        sql = "SELECT name FROM Object WHERE id = %s"
+        result = self.db_query_one(sql, (object_id, ))
         if result != None:
             object_name = result[0]
         else:
@@ -157,8 +161,8 @@ class RTObject:
     def GetObjectLabel(self,object_id):
         '''Get object label'''
         #Get interface id
-        sql = "SELECT label FROM Object WHERE id = %d" % (object_id)
-        result = self.db_query_one(sql)
+        sql = "SELECT label FROM Object WHERE id = %s"
+        result = self.db_query_one(sql, (object_id, ))
         if result != None:
             object_label = result[0]
         else:
@@ -169,8 +173,8 @@ class RTObject:
     def GetObjectComment(self,object_id):
         '''Get object comment'''
         #Get interface id
-        sql = "SELECT comment FROM Object WHERE id = %d" % (object_id)
-        result = self.db_query_one(sql)
+        sql = "SELECT comment FROM Object WHERE id = %s"
+        result = self.db_query_one(sql, (object_id, ))
         if result != None:
             object_comment = result[0]
         else:
@@ -181,8 +185,8 @@ class RTObject:
     def GetObjectId(self,name):
         '''Translate Object name to object id'''
         #Get interface id
-        sql = "SELECT id FROM Object WHERE name = '%s'" % (name)
-        result = self.db_query_one(sql)
+        sql = "SELECT id FROM Object WHERE name = %s"
+        result = self.db_query_one(sql, (name, ))
         if result != None:
             object_id = result[0]
         else:
@@ -202,8 +206,8 @@ class RTObject:
         Require 6 arguments: object_id, object_tid, attr_id, string_value, uint_value, name'''
     
         # Check if attribute exist
-        sql = "SELECT string_value,uint_value FROM AttributeValue WHERE object_id = %d AND object_tid = %d AND attr_id = %d" % (object_id, object_tid, attr_id)
-        result = self.db_query_one(sql)
+        sql = "SELECT string_value,uint_value FROM AttributeValue WHERE object_id = %s AND object_tid = %s AND attr_id = %s"
+        result = self.db_query_one(sql, (object_id, object_tid, attr_id, ))
 
         if result != None:
             # Check if attribute value is same and determine attribute type
@@ -246,9 +250,9 @@ class RTObject:
 
     def GetAttributeId(self,searchstring):
         '''Search racktables database and get attribud id based on search string as argument'''
-        sql = "SELECT id FROM Attribute WHERE name LIKE '%"+searchstring+"%'"
+        sql = "SELECT id FROM Attribute WHERE name LIKE '%%%s%%'"
   
-        result = self.db_query_one(sql)
+        result = self.db_query_one(sql, (searchstring,))
 
         if result != None:
             getted_id = result[0]
@@ -261,8 +265,8 @@ class RTObject:
     def GetInterfaceName(self,object_id,interface_id):
         '''Find name of specified interface. Required object_id and interface_id argument'''
         #Get interface id
-        sql = "SELECT name FROM Port WHERE object_id = %d AND name = %d" % (object_id, interface_id)
-        result = self.db_query_one(sql)
+        sql = "SELECT name FROM Port WHERE object_id = %s AND name = %s"
+        result = self.db_query_one(sql, (object_id, interface_id,))
         if result != None:
             port_name = result[0]
         else:
@@ -273,8 +277,8 @@ class RTObject:
     def GetInterfaceId(self,object_id,interface):
         '''Find id of specified interface'''
         #Get interface id
-        sql = "SELECT id,name FROM Port WHERE object_id = %d AND name = '%s'" % (object_id, interface)
-        result = self.db_query_one(sql)
+        sql = "SELECT id,name FROM Port WHERE object_id = %s AND name = %s"
+        result = self.db_query_one(sql, (object_id, interface,))
         if result != None:
             port_id = result[0]
         else:
@@ -285,9 +289,9 @@ class RTObject:
     def UpdateNetworkInterface(self,object_id,interface):
         '''Add network interfece to object if not exist'''
 
-        sql = "SELECT id,name FROM Port WHERE object_id = %d AND name = '%s'" % (object_id, interface)
+        sql = "SELECT id,name FROM Port WHERE object_id = %s AND name = %s"
 
-        result = self.db_query_one(sql)
+        result = self.db_query_one(sql, (object_id, interface,))
         if result == None:
         
             sql = "INSERT INTO Port (object_id,name,iif_id,type) VALUES (%s,%s,1,24)"
@@ -313,11 +317,11 @@ class RTObject:
                         select_object = 'portb'
                     else:
                         select_object = 'porta'
-                    sql = "SELECT %s FROM Link WHERE porta = %d OR portb = %d" % (select_object, port_id, port_id)
-                    result = self.db_query_one(sql)
+                    sql = "SELECT %s FROM Link WHERE porta = %s OR portb = %s"
+                    result = self.db_query_one(sql, (select_object, port_id, port_id,))
                     if result == None:
                         #Insert new connection
-                        sql = "INSERT INTO Link (porta,portb) VALUES (%d,%d)"
+                        sql = "INSERT INTO Link (porta,portb) VALUES (%s, %s)"
                         self.db_insert(sql, (port_id, switch_port_id,))
                         resolution = True
                     else:
@@ -326,8 +330,9 @@ class RTObject:
                         if old_switch_port_id != switch_port_id:
                             sql = "UPDATE Link set portb = %s, porta = %s WHERE porta = %s OR portb = %s"
                             self.db_insert(sql, (switch_port_id, port_id, port_id, port_id,))
-                            sql = "SELECT Port.name as port_name, Object.name as obj_name FROM Port INNER JOIN Object ON Port.object_id = Object.id WHERE Port.id = %d" % old_switch_port_id
-                            result = self.db_query_one(sql)
+                            sql = '''SELECT Port.name as port_name, Object.name as obj_name 
+                            FROM Port INNER JOIN Object ON Port.object_id = Object.id WHERE Port.id = %s'''
+                            result = self.db_query_one(sql, (old_switch_port_id, ))
                             old_switch_port, old_device_link = result
 
                             text = "Changed link from %s -> %s" % (old_device_link,old_switch_port)
@@ -397,9 +402,9 @@ class RTObject:
     
     def GetDictionaryId(self,searchstring):
         '''Search racktables dictionary using searchstring and return id of dictionary element'''
-        sql = "SELECT dict_key FROM Dictionary WHERE dict_value LIKE '%"+searchstring+"%'"
+        sql = "SELECT dict_key FROM Dictionary WHERE dict_value LIKE '%%%s%%'"
 
-        result = self.db_query_one(sql)
+        result = self.db_query_one(sql, (searchstring,))
         if result != None:
             getted_id = result[0]
         else:
@@ -502,11 +507,10 @@ class RTObject:
         '''Assign virtual server to correct hypervisor'''
         sql = '''
         SELECT child_entity_id FROM EntityLink 
-        WHERE parent_entity_id = %d AND 
-        child_entity_id = %d''' % (
-            object_id,virtual_id
-        )
-        result = self.db_query_one(sql)
+        WHERE parent_entity_id = %s AND 
+        child_entity_id = %s
+        '''
+        result = self.db_query_one(sql, (object_id, virtual_id,))
 
         if result == None:
             sql = "INSERT INTO EntityLink (parent_entity_type, parent_entity_id, child_entity_type, child_entity_id) VALUES ('object',%s,'object',%s)"
@@ -529,8 +533,8 @@ class RTObject:
 
         # Assign server to chassis
         # Check if it's connected
-        sql = "SELECT parent_entity_id FROM EntityLink WHERE child_entity_type = 'object' AND child_entity_id = %d" % (server_id)
-        result = self.db_query_one(sql)
+        sql = "SELECT parent_entity_id FROM EntityLink WHERE child_entity_type = 'object' AND child_entity_id = %s"
+        result = self.db_query_one(sql, (server_id,))
 
         if result != None:
         # Object is connected to someone
@@ -552,8 +556,6 @@ class RTObject:
             self.InsertLog(chassis_id, "Linked with server %s" % (server_name))
             self.InsertLog(server_id, "Linked with Blade Chassis %s" % (chassis_name))
             
-            
-
     def GetAllServerChassisId(self):
         '''Get list of all server chassis IDs'''
         sql = "SELECT object_id FROM AttributeValue WHERE attr_id = 2 AND uint_value = 994"

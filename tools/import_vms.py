@@ -56,6 +56,9 @@ with open(vm_file, 'rb') as csvfile:
         if rt.ObjectExistName(vm_name):
             print('Object already exists, not adding: %s' % vm_name, file=stderr)
             object_id = rt.GetObjectId(vm_name)
+            # This is temporary code to replace all names with new naming 
+            # standard.
+            UpdateObjectName(object_id, new_name)
         else:
             try:
                 rt.AddObject(vm_name, vm_objtype, None, vm_label)
