@@ -53,17 +53,17 @@ class RTObject:
         self.dbresult = self.db.cursor()
 
     # DATABASE methods
-    def db_query_one(self, sql):
+    def db_query_one(self, sql, values=()):
         '''SQL query function, return one row. Require sql query as parameter'''
-        self.dbresult.execute(sql)
+        self.dbresult.execute(sql, values)
         return self.dbresult.fetchone()
 
-    def db_query_all(self, sql):
+    def db_query_all(self, sql, values=()):
         '''SQL query function, return all rows. Require sql query as parameter'''
-        self.dbresult.execute(sql)
+        self.dbresult.execute(sql, values)
         return self.dbresult.fetchall()
     
-    def db_insert(self, sql, values):
+    def db_insert(self, sql, values=()):
         '''SQL insert/update function. Require sql query as parameter'''
         self.dbresult.execute(sql, values)
         self.db.commit()
@@ -72,10 +72,6 @@ class RTObject:
         '''SQL function which return ID of last inserted row.'''
         return self.dbresult.lastrowid
     
-    #def ListObjects(self):
-        #'''List all objects'''
-        #sql = 'SELECT name FROM Object'
-        #return "Found " + str(len(self.db_query_all(sql))) +" objects in database" 
     @property
     def Objects(self):
         sql = 'select id, name from Object'
@@ -133,8 +129,8 @@ class RTObject:
 
     def UpdateObjectLabel(self,object_id,label):
         '''Update label on object'''
-        sql = "UPDATE Object SET label = '%s' where id = %d" % (label, object_id)
-        self.db_insert(sql)
+        sql = "UPDATE Object SET label = %s where id = %s"
+        self.db_insert(sql, (label, object_id,))
     
     def UpdateObjectComment(self,object_id,comment):
         '''Update comment on object'''
