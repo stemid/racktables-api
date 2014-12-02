@@ -88,9 +88,9 @@ class RTObject:
             raise ValueError('Found not ObjectType Chapter ID')
         sql = '''
         select dict_key, dict_value 
-        from Dictionary where chapter_id=%s''' % (chapter_id)
+        from Dictionary where chapter_id=%s'''
         object_types = []
-        object_types = self.db_query_all(sql)
+        object_types = self.db_query_all(sql, (chapter_id,))
         return object_types
 
     # Object methotds
@@ -348,8 +348,8 @@ class RTObject:
     def InterfaceAddIpv4IP(self,object_id,device,ip):
         '''Add/Update IPv4 IP on interface'''
 
-        sql = "SELECT INET_NTOA(ip) from IPv4Allocation WHERE object_id = %d AND name = '%s'" % (object_id,device)
-        result = self.db_query_all(sql)
+        sql = "SELECT INET_NTOA(ip) from IPv4Allocation WHERE object_id = %s AND name = %s"
+        result = self.db_query_all(sql, (object_id,device,))
 
         if result != None:
             old_ips = result
@@ -375,8 +375,8 @@ class RTObject:
         #Create IPv6 format for Mysql
         ip6 = "".join(str(x) for x in addr6.exploded.split(':'))
 
-        sql = "SELECT HEX(ip) FROM IPv6Allocation WHERE object_id = %d AND name = '%s'" % (object_id, device)
-        result = self.db_query_all(sql)
+        sql = "SELECT HEX(ip) FROM IPv6Allocation WHERE object_id = %s AND name = %s"
+        result = self.db_query_all(sql, (object_id, device,))
         
         if result != None:
             old_ips = result
@@ -410,9 +410,9 @@ class RTObject:
     def CleanVirtuals(self,object_id,virtual_servers):
         '''Clean dead virtuals from hypervisor. virtual_servers is list of active virtual servers on hypervisor (object_id)'''
 
-        sql = "SELECT child_entity_id FROM EntityLink WHERE parent_entity_id = %d" % object_id
+        sql = "SELECT child_entity_id FROM EntityLink WHERE parent_entity_id = %s"
 
-        result = self.db_query_all(sql)
+        result = self.db_query_all(sql, (object_id,))
 
         if result != None:
             old_virtuals_ids = result
@@ -441,9 +441,9 @@ class RTObject:
     def CleanIPAddresses(self,object_id,ip_addresses,device):
         '''Clean unused ip from object. ip addresses is list of IP addresses configured on device (device) on host (object_id)'''
 
-        sql = "SELECT INET_NTOA(ip) FROM IPv4Allocation WHERE object_id = %d AND name = '%s'" % (object_id, device)
+        sql = "SELECT INET_NTOA(ip) FROM IPv4Allocation WHERE object_id = %s AND name = %s"
         
-        result = self.db_query_all(sql)
+        result = self.db_query_all(sql, (object_id, device, ))
 
         if result != None:
             old_ips = result
@@ -464,8 +464,8 @@ class RTObject:
     def CleanIPv6Addresses(self,object_id,ip_addresses,device):
         '''Clean unused ipv6 from object. ip_addresses mus be list of active IP addresses on device (device) on host (object_id)'''
 
-        sql = "SELECT HEX(ip) FROM IPv6Allocation WHERE object_id = %d AND name = '%s'" % (object_id,device)
-        result = self.db_query_all(sql)
+        sql = "SELECT HEX(ip) FROM IPv6Allocation WHERE object_id = %s AND name = %s"
+        result = self.db_query_all(sql, (object_id, device, ))
 
         if result != None:
             old_ips = result
