@@ -7,11 +7,12 @@ add-pssnapin VMware.VimAutomation.Core
 Set-PowerCLIConfiguration -invalidCertificateAction 'ignore' -confirm:$false
 Connect-VIServer -Server 10.220.100.220 -Protocol https
 
+$customer_tag = 'Customer Names'
 $vms = (get-vm)
 $results = @()
 
 foreach($vm in $vms) {
-  $row = "" | select Folder, Name, HostName, NIC, IP, VLAN, OperatingSystem, Host, Cluster
+  $row = "" | select Folder, Name, HostName, NIC, IP, VLAN, OperatingSystem, CustomerTag, Tags, Host, Cluster
   $row.Folder = $vm.Folder
   $row.Name = $vm.Name
   $row.HostName = $vm.Guest.HostName
@@ -19,6 +20,11 @@ foreach($vm in $vms) {
   $row.NIC = ($vm.Guest.Nics | foreach-object {$_.Device}) -join ','
   $row.IP = ($vm.Guest | ForEach-Object {$_.IPAddress} | where-object {$_.split('.').length -eq 4}) -join ','
   $row.VLAN = ($vm | get-networkadapter | foreach-object {$_.NetworkName}) -join ','
+  # Tags requires PowerCLI 5.5 and vSphere 5.1.
+  $row.Tags = ($vm | get-tagassignment | foreach-object {$_.Tag.Name}) -join ','
+  $row.CustomerTag = ($vm | get-tagassignment | foreach-object {$_.Tag} | where-object {
+    $_.Category -eq $customer_tag
+  }).Name
   $row.Host = $vm.VMHost.Name
   $row.Cluster = (get-cluster -vm $vm)
   $results += $row
