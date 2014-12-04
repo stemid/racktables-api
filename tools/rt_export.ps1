@@ -1,4 +1,5 @@
-# This exports all VMs from vSphere with information relevant to a Racktables import.
+# This exports all VMs from vSphere with information relevant to a 
+# Racktables import.
 # by Stefan Midjich <swehack@gmail.com>
 #
 # For reference: https://pubs.vmware.com/vsphere-55/topic/com.vmware.powercli.cmdletref.doc/VirtualMachine.html
@@ -18,11 +19,19 @@ foreach($vm in $vms) {
   $row.HostName = $vm.Guest.HostName
   $row.OperatingSystem = $vm.Guest.OSFullName
   $row.NIC = ($vm.Guest.Nics | foreach-object {$_.Device}) -join ','
-  $row.IP = ($vm.Guest | ForEach-Object {$_.IPAddress} | where-object {$_.split('.').length -eq 4}) -join ','
-  $row.VLAN = ($vm | get-networkadapter | foreach-object {$_.NetworkName}) -join ','
+  $row.IP = ($vm.Guest | ForEach-Object {$_.IPAddress} | where-object {
+      $_.split('.').length -eq 4
+  }) -join ','
+  $row.VLAN = ($vm | get-networkadapter | foreach-object {
+      $_.NetworkName
+  }) -join ','
   # Tags requires PowerCLI 5.5 and vSphere 5.1.
-  $row.Tags = ($vm | get-tagassignment | foreach-object {$_.Tag.Name}) -join ','
-  $row.CustomerTag = ($vm | get-tagassignment | foreach-object {$_.Tag} | where-object {
+  $row.Tags = ($vm | get-tagassignment | foreach-object {
+      $_.Tag.Name
+  }) -join ','
+  $row.CustomerTag = ($vm | get-tagassignment | foreach-object {
+      $_.Tag
+  } | where-object {
     $_.Category -eq $customer_tag
   }).Name
   $row.Host = $vm.VMHost.Name
