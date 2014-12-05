@@ -41,6 +41,15 @@ __all__ = ["RTObject"]
 import re
 import ipaddr
 
+class IPv4Network(object):
+    def __init__(self, **args):
+        self.ip = args['ip']
+        self.mask = args['mask']
+        self.name = args['name']
+        self.comment = args['comment']
+
+    def __repr__(self):
+        return '%s/%s' % (self.ip, self.mask)
 
 class RTObject:
     '''Ractables object. Require database object as argument. '''
@@ -50,27 +59,27 @@ class RTObject:
         '''Initialize Object'''
         # Open configuration file
         self.db = dbobject
-        self.dbresult = self.db.cursor()
+        self.dbcursor = self.db.cursor()
 
     # DATABASE methods
     def db_query_one(self, sql, values=()):
         '''SQL query function, return one row. Require sql query as parameter'''
-        self.dbresult.execute(sql, values)
-        return self.dbresult.fetchone()
+        self.dbcursor.execute(sql, values)
+        return self.dbcursor.fetchone()
 
     def db_query_all(self, sql, values=()):
         '''SQL query function, return all rows. Require sql query as parameter'''
-        self.dbresult.execute(sql, values)
-        return self.dbresult.fetchall()
+        self.dbcursor.execute(sql, values)
+        return self.dbcursor.fetchall()
     
     def db_insert(self, sql, values=()):
         '''SQL insert/update function. Require sql query as parameter'''
-        self.dbresult.execute(sql, values)
+        self.dbcursor.execute(sql, values)
         self.db.commit()
 
     def db_fetch_lastid(self):
         '''SQL function which return ID of last inserted row.'''
-        return self.dbresult.lastrowid
+        return self.dbcursor.lastrowid
     
     @property
     def Objects(self):
@@ -92,6 +101,18 @@ class RTObject:
         object_types = []
         object_types = self.db_query_all(sql, (chapter_id,))
         return object_types
+
+    def IPv4Networks(self):
+        sql = 'select INET_NTOA(ip),mask,name,comment from IPv4Network'
+        networks = self.dbcursor.execute(sql)
+        for row in self.dbcursor:
+            _ip_network = IPv4Network(
+                ip = row[0],
+                mask = row[1],
+                name = row[2],
+                comment = row[3]
+            )
+            yield _ip_network
 
     # Object methotds
     def ObjectExistST(self,service_tag):
