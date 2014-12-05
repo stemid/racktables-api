@@ -16,7 +16,7 @@ import MySQLdb
 import rtapi
 
 config = ConfigParser()
-config.read('import_vms.cfg')
+config.read(['import_vms.cfg', './import_vms.cfg'])
 
 # Helper method to return empty strings instead of None
 def xstr(s):
@@ -35,13 +35,17 @@ with open(vm_file, 'rb') as csvfile:
     conn = MySQLdb.connect(user=db_user, passwd=db_pass, db=db_name)
     rt = rtapi.RTObject(conn)
 
-    lines = csv.reader(csvfile, delimiter=',', quotechar='"')
+    dialect = csv.Sniffer().sniff(csvfile.read(1024))
+    csvfile.seek(0)
+    lines = csv.DictReader(csvfile, dialect=dialect)
 
     for line in lines:
         object_added = False
-        vm_name = line[0]
-        vm_label = line[0]
-        vm_interfaces = line[3:]
+        vm_name = line['Name']
+        vm_label = line['Name']
+        vm_interfaces = line['NIC'].split(',')
+        vm_ip-addresses = line['IP'].split(',')
+        vm_vlans = line['VLAN'].split(',')
 
         # Get the VM type ID
         for (obj_id, obj_type) in rt.ObjectTypes:
@@ -58,6 +62,7 @@ with open(vm_file, 'rb') as csvfile:
             object_id = rt.GetObjectId(vm_name)
             # This is temporary code to replace all names with new naming 
             # standard.
+            new_name = '%s-%s' % (line['Folder'], line['Name'])
             UpdateObjectName(object_id, new_name)
         else:
             try:
@@ -77,18 +82,16 @@ with open(vm_file, 'rb') as csvfile:
             )
 
         # Now proceed to update the object with network interfaces
-        for if_data in grouper(vm_interfaces, 4, None):
+        for ifname in vm_interfaces:
             port_id = None
-            (vlan, hwaddr, ipaddrs, ifname) = if_data
 
             # Add network interface name
             if ifname:
                 port_id = rt.UpdateNetworkInterface(object_id, ifname)
             if port_id:
                 print('Updated object %s with interface %s' % (vm_name, ifname))
-            if not ipaddrs:
-                continue
 
+        for ipaddrs in vm_ip-addresses:
             # See if ipaddrs is valid
             try:
                 _ip = ipaddr.IPv4Network('%s/24' % ipaddrs)
