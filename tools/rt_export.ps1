@@ -8,6 +8,7 @@ add-pssnapin VMware.VimAutomation.Core
 Set-PowerCLIConfiguration -invalidCertificateAction 'ignore' -confirm:$false
 Connect-VIServer -Server 10.220.100.220 -Protocol https
 
+# This is the tag group with customer names in vSphere.
 $customer_tag = 'Customer Names'
 $vms = (get-vm)
 $results = @()
@@ -31,9 +32,7 @@ foreach($vm in $vms) {
   }) -join ','
   $row.CustomerTag = ($vm | get-tagassignment | foreach-object {
       $_.Tag
-  } | where-object {
-    $_.Category -eq $customer_tag
-  }).Name
+  } | where-object {$_.Category -eq $customer_tag}).Name
   $row.Host = $vm.VMHost.Name
   $row.Cluster = (get-cluster -vm $vm)
   $results += $row
