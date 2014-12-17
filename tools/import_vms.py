@@ -66,7 +66,7 @@ with open(vm_file, 'rb') as csvfile:
             UpdateObjectName(object_id, new_name)
         else:
             try:
-                rt.AddObject(vm_name, vm_objtype, None, vm_label)
+                rtobject = rt.AddObject(vm_name, vm_objtype, None, vm_label)
             except Exception as e:
                 print('Failed adding object %s: %s' % (
                     vm_name, 
