@@ -82,10 +82,8 @@ class RTObject:
         return self.dbcursor.lastrowid
     
     @property
-    def Objects(self):
-        sql = 'select id, name from Object'
-        objects = self.db_query_all(sql)
-        return objects
+    def db_lastrowid(self):
+        return self.dbcursor.lastrowid
 
     @property
     def ObjectTypes(self):
@@ -102,6 +100,13 @@ class RTObject:
         object_types = self.db_query_all(sql, (chapter_id,))
         return object_types
 
+    def Objects(self):
+        sql = 'select id from Object'
+        objects = self.dbcursor.execute(sql)
+        for row in self.dbcursor:
+            rtobject = RTObject(row[0])
+            yield rtobject
+
     def IPv4Networks(self):
         sql = 'select INET_NTOA(ip),mask,name,comment from IPv4Network'
         networks = self.dbcursor.execute(sql)
@@ -114,7 +119,6 @@ class RTObject:
             )
             yield _ip_network
 
-    # Object methotds
     def ObjectExistST(self,service_tag):
         '''Check if object exist in database based on asset_no'''
         sql = 'SELECT name FROM Object WHERE asset_no = %s'
@@ -147,6 +151,7 @@ class RTObject:
                       ''',
                       (name, server_type_id, asset_no, label,)
                      )
+        return RTObject(self.db_lastrowid)
 
     def UpdateObjectLabel(self,object_id,label):
         '''Update label on object'''
