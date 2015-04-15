@@ -25,39 +25,28 @@
 #
 # Code cleanup by Stefan Midjich <swehack@gmail.com>
 
-'''PyRacktables
-Simple python Class for manipulation with objects in racktables database. 
+'''Python racktables API. 
+
+This started as a fork of Robert Vojcik's API but has evolved into a complete rewrite. 
 
 For proper function, some methods need ipaddr module (https://pypi.python.org/pypi/ipaddr)
 '''
-__author__ = "Robert Vojcik (robert@vojcik.net)"
-__version__ = "0.1.2"
+__author__ = "Stefan Midjich (swehack@gmail.com)"
+__version__ = "0.20.8"
 __copyright__ = "OpenSource"
 __license__ = "GPLv2"
 
-__all__ = ["RTObject"]
-
+__all__ = ["Racktables"]
 
 import re
 import ipaddr
 
-class IPv4Network(object):
-    def __init__(self, **args):
-        self.ip = args['ip']
-        self.mask = args['mask']
-        self.name = args['name']
-        self.comment = args['comment']
-
-    def __repr__(self):
-        return '%s/%s' % (self.ip, self.mask)
-
-class RTObject:
+class Racktables(object):
     '''Ractables object. Require database object as argument. '''
 
     # Init method
     def __init__(self, dbobject):
         '''Initialize Object'''
-        # Open configuration file
         self.db = dbobject
         self.dbcursor = self.db.cursor()
 
@@ -81,13 +70,12 @@ class RTObject:
         '''SQL function which return ID of last inserted row.'''
         return self.dbcursor.lastrowid
     
-    @property
     def Objects(self):
-        sql = 'select id, name from Object'
-        objects = self.db_query_all(sql)
-        return objects
+        sql = 'select id from Object'
+        self.dbcursor.execute(sql)
+        for object_id in self.dbcursor:
+            yield RTObject(self.db, object_id)
 
-    @property
     def ObjectTypes(self):
         '''List all object types'''
         # First find the ObjectType chapter ID
@@ -95,12 +83,12 @@ class RTObject:
         chapter_id = self.db_query_one(sql)
         if not chapter_id:
             raise ValueError('Found not ObjectType Chapter ID')
-        sql = '''
-        select dict_key, dict_value 
+
+        sql = '''select dict_key, dict_value 
         from Dictionary where chapter_id=%s'''
-        object_types = []
-        object_types = self.db_query_all(sql, (chapter_id,))
-        return object_types
+        self.dbcursor.execute(sql, (chapter_id,))
+        for (object_id, object_name) in self.dbcursor:
+            yield (object_id, object_name)
 
     def IPv4Networks(self):
         sql = 'select INET_NTOA(ip),mask,name,comment from IPv4Network'
@@ -126,10 +114,9 @@ class RTObject:
     def ObjectExistName(self,name):
         '''Check if object exist in database based on name'''
         sql = 'select id from Object where name = %s'
-        if self.db_query_one(sql, (name, )) == None:
-            return False
-        else:
-            return True
+        self.dbcursor.execute(sql)
+        object_id = self.dbcursor.fetchone()
+        return RTObject(self.db, object_id)
 
     def ObjectExistSTName(self,name,asset_no):
         '''Check if object exist in database based on name'''
@@ -142,11 +129,14 @@ class RTObject:
     def AddObject(self,name,server_type_id,asset_no,label):
         '''Add new object to racktables'''
         self.db_insert('''
-                      INSERT INTO Object (name, objtype_id, asset_no, label)
-                      VALUES (%s, %s, %s, %s)
+                       insert into Object 
+                       (name, objtype_id, asset_no, label) 
+                       values (%s, %s, %s, %s)
                       ''',
                       (name, server_type_id, asset_no, label,)
                      )
+        object_id = self.db.lastrowid
+        return RTObject(self.db, object_id)
 
     def UpdateObjectLabel(self,object_id,label):
         '''Update label on object'''
@@ -581,3 +571,57 @@ class RTObject:
         '''Get list of all server chassis IDs'''
         sql = "SELECT object_id FROM AttributeValue WHERE attr_id = 2 AND uint_value = 994"
         return self.db_query_all(sql)
+
+class IPv4Network(Racktables):
+    # TODO: This should only require the ID of the network as argument.
+    def __init__(self, dbobject, **args):
+        self.ip = args['ip']
+        self.mask = args['mask']
+        self.name = args['name']
+        self.comment = args['comment']
+
+    def __repr__(self):
+        return '%s/%s' % (self.ip, self.mask)
+
+class RTObject(Racktables):
+    '''This object represents an object in racktables db.'''
+
+    def __init__(self, dbobject, object_id):
+        rt = Racktables(dbobject)
+
+        sql = '''
+        select id, name, label, objtype_id, asset_no, has_problems, comment
+        from Object where id = %s
+        '''
+
+        (
+            self._id, 
+            self._name,
+            self._label,
+            self._objtype_id,
+            self._asset_no,
+            self._has_problems,
+            self._comment
+        ) = rt.db_query_one(sql, (object_id,))
+
+    def __repr__(self):
+        return self._name
+
+    def InsertLog(self, message):
+        '''Attach log message to specific object'''
+        sql = '''INSERT INTO ObjectLog (object_id,user,date,content) 
+        VALUES (%s,'script',now(),%s)'''
+        rt.db_insert(sql, (self._id, message,))
+
+    def UpdateName(self, name):
+        old_name = self._name
+        sql = "UPDATE Object SET name = '%s' where id = %s"
+        rt.db_insert(sql, (name, object_id,))
+        self.InsertLog(self._id, 'Name changed from %s to %s' % (
+            old_name, name
+        ))
+        self._name = name
+
+    def Delete(self):
+        sql = 'delete from Object where id=%s'
+        rt.db_insert(sql, (self._id,))

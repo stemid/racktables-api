@@ -18,22 +18,14 @@ import rtapi
 config = ConfigParser()
 config.read(['import_vms.cfg', './import_vms.cfg'])
 
-# Helper method to return empty strings instead of None
-def xstr(s):
-    if s is None:
-        return('')
-    return str(s)
-
-def grouper(iterable, n, fillvalue=None):
-    from itertools import izip_longest
-    "Collect data into fixed-length chunks or blocks"
-    # grouper('ABCDEFG', 3, 'x') --> ABC DEF Gxx
-    args = [iter(iterable)] * n
-    return izip_longest(fillvalue=fillvalue, *args)
-
 with open(vm_file, 'rb') as csvfile:
-    conn = MySQLdb.connect(user=db_user, passwd=db_pass, db=db_name)
-    rt = rtapi.RTObject(conn)
+    conn = MySQLdb.connect(
+        host=config.get('DEFAULT', 'db_host'), 
+        user=config.get('DEFAULT', 'db_user'), 
+        passwd=config.get('DEFAULT', 'db_pass'), 
+        db=config.get('DEFAULT', 'db_name')
+    )
+    rt = rtapi.Racktables(conn)
 
     dialect = csv.Sniffer().sniff(csvfile.read(1024))
     csvfile.seek(0)
@@ -48,7 +40,7 @@ with open(vm_file, 'rb') as csvfile:
         vm_vlans = line['VLAN'].split(',')
 
         # Get the VM type ID
-        for (obj_id, obj_type) in rt.ObjectTypes:
+        for (obj_id, obj_type) in rt.ObjectTypes():
             if obj_type == 'VM':
                 vm_objtype = obj_id
                 break
@@ -56,17 +48,18 @@ with open(vm_file, 'rb') as csvfile:
             print('Could not get VM object type ID', file=stderr)
             exit(1)
 
+        rtobject = None
         # Check if object already exists
-        if rt.ObjectExistName(vm_name):
+        rtobject = rt.ObjectExistName(vm_name)
+        if rtobject:
             print('Object already exists, not adding: %s' % vm_name, file=stderr)
-            object_id = rt.GetObjectId(vm_name)
             # This is temporary code to replace all names with new naming 
             # standard.
             new_name = '%s-%s' % (line['Folder'], line['Name'])
-            UpdateObjectName(object_id, new_name)
+            rtobject.UpdateName(new_name)
         else:
             try:
-                rt.AddObject(vm_name, vm_objtype, None, vm_label)
+                rtobject = rt.AddObject(vm_name, vm_objtype, None, vm_label)
             except Exception as e:
                 print('Failed adding object %s: %s' % (
                     vm_name, 
