@@ -70,11 +70,17 @@ class Racktables(object):
         '''SQL function which return ID of last inserted row.'''
         return self.dbcursor.lastrowid
     
+<<<<<<< HEAD
     def Objects(self):
         sql = 'select id from Object'
         self.dbcursor.execute(sql)
         for object_id in self.dbcursor:
             yield RTObject(self.db, object_id)
+=======
+    @property
+    def db_lastrowid(self):
+        return self.dbcursor.lastrowid
+>>>>>>> a7ba2741be147fa95009a08b70f98b45d68ae166
 
     def ObjectTypes(self):
         '''List all object types'''
@@ -90,6 +96,13 @@ class Racktables(object):
         for (object_id, object_name) in self.dbcursor:
             yield (object_id, object_name)
 
+    def Objects(self):
+        sql = 'select id from Object'
+        objects = self.dbcursor.execute(sql)
+        for row in self.dbcursor:
+            rtobject = RTObject(row[0])
+            yield rtobject
+
     def IPv4Networks(self):
         sql = 'select INET_NTOA(ip),mask,name,comment from IPv4Network'
         networks = self.dbcursor.execute(sql)
@@ -102,7 +115,6 @@ class Racktables(object):
             )
             yield _ip_network
 
-    # Object methotds
     def ObjectExistST(self,service_tag):
         '''Check if object exist in database based on asset_no'''
         sql = 'SELECT name FROM Object WHERE asset_no = %s'
@@ -135,8 +147,12 @@ class Racktables(object):
                       ''',
                       (name, server_type_id, asset_no, label,)
                      )
+<<<<<<< HEAD
         object_id = self.db.lastrowid
         return RTObject(self.db, object_id)
+=======
+        return RTObject(self.db_lastrowid)
+>>>>>>> a7ba2741be147fa95009a08b70f98b45d68ae166
 
     def UpdateObjectLabel(self,object_id,label):
         '''Update label on object'''

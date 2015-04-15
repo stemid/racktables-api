@@ -37,3 +37,11 @@ The API frontend has changed some from the original.
     # List all objects from database
     for (object_id, object_name) in rt.Objects:
       print object_id, object_name
+
+Example of use of generators in new API. 
+
+    rt = rtapi.RTObject(db)
+
+    # List all IPv4 Networks
+    for network in rt.IPv4Networks():
+      print network.name, network
