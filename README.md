@@ -12,6 +12,7 @@ Robert Vojcik (robert@vojcik.net)
 
 ## TODO
 
+  * Tag support
   * Support for containers, like virtual clusters
   * Rewrite all calls to MySQLdb to use their own parameter expansion
 

@@ -8,6 +8,7 @@
 #   
 #   Server Audit utility for Racktables Datacenter management project.
 #   Copyright (C) 2012  Robert Vojcik (robert@vojcik.net)
+#                 2015  Stefan Midjich (swehack@gmail.com)
 #   
 #   This program is free software; you can redistribute it and/or
 #   modify it under the terms of the GNU General Public License
@@ -23,7 +24,7 @@
 #   along with this program; if not, write to the Free Software
 #   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #
-# Code cleanup by Stefan Midjich <swehack@gmail.com>
+# Forked from Robert Vojcik by Stefan Midjich <swehack@gmail.com>
 
 '''Python racktables API. 
 
@@ -42,7 +43,7 @@ import re
 import ipaddr
 
 class Racktables(object):
-    '''Ractables object. Require database object as argument. '''
+    '''Racktables object. Require database object as argument. '''
 
     # Init method
     def __init__(self, dbobject):
@@ -89,13 +90,6 @@ class Racktables(object):
         self.dbcursor.execute(sql, (chapter_id,))
         for (object_id, object_name) in self.dbcursor:
             yield (object_id, object_name)
-
-    def Objects(self):
-        sql = 'select id from Object'
-        objects = self.dbcursor.execute(sql)
-        for row in self.dbcursor:
-            rtobject = RTObject(row[0])
-            yield rtobject
 
     def IPv4Networks(self):
         sql = 'select INET_NTOA(ip),mask,name,comment from IPv4Network'
@@ -631,3 +625,37 @@ class RTObject(Racktables):
     def Delete(self):
         sql = 'delete from Object where id=%s'
         rt.db_insert(sql, (self._id,))
+
+    def Tags(self):
+        sql = 'select tag_id from TagStorage where entity_id = %s'
+        tags = rt.dbcursor.execute(sql)
+        for tag_id in rt.dbcursor:
+            rt_tag = RTTag(rt.db, tag_id)
+            yield rt_tag
+
+class RTTag(RTObject):
+    def __init__(self, dbobject, tag_id):
+        rt = Racktables(dbobject)
+
+        self._id = tag_id
+        sql = 'select parent_id, tag from TagTree where id = %s'
+        (
+            self._parent_id,
+            self._tag
+        ) = rt.db_query_one(sql, (tag_id,))
+
+    def __repr__(self):
+        return self._tag
+
+    def parent(self):
+        return RTTag(rt.db, self._parent_id)
+
+    # Change name of tag
+    @property
+    def Tag(self):
+        return self._tag
+
+    @Tag.setter
+    def Tag(self, new_name):
+        sql = 'update TagTree set tag = %s where id = %s'
+        rt.dbcursor.execute(sql, (new_name, self._id,))
