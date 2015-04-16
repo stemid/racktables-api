@@ -58,7 +58,8 @@ class Racktables(object):
         return self.dbcursor.fetchone()
 
     def db_query_all(self, sql, values=()):
-        '''SQL query function, return all rows. Require sql query as parameter'''
+        '''SQL query function, return all rows. Require sql query as 
+        parameter'''
         self.dbcursor.execute(sql, values)
         return self.dbcursor.fetchall()
     
@@ -587,7 +588,9 @@ class RTObject(Racktables):
     '''This object represents an object in racktables db.'''
 
     def __init__(self, dbobject, object_id):
-        rt = Racktables(dbobject)
+        self.rt = Racktables(dbobject)
+        self.db = dbobject
+        self.dbcursor = self.db.cursor()
 
         sql = '''
         select id, name, label, objtype_id, asset_no, has_problems, comment
@@ -611,12 +614,12 @@ class RTObject(Racktables):
         '''Attach log message to specific object'''
         sql = '''INSERT INTO ObjectLog (object_id,user,date,content) 
         VALUES (%s,'script',now(),%s)'''
-        rt.db_insert(sql, (self._id, message,))
+        self.rt.db_insert(sql, (self._id, message,))
 
     def UpdateName(self, name):
         old_name = self._name
         sql = "UPDATE Object SET name = '%s' where id = %s"
-        rt.db_insert(sql, (name, object_id,))
+        self.rt.db_insert(sql, (name, object_id,))
         self.InsertLog(self._id, 'Name changed from %s to %s' % (
             old_name, name
         ))
@@ -624,31 +627,33 @@ class RTObject(Racktables):
 
     def Delete(self):
         sql = 'delete from Object where id=%s'
-        rt.db_insert(sql, (self._id,))
+        self.rt.db_insert(sql, (self._id,))
 
     def Tags(self):
         sql = 'select tag_id from TagStorage where entity_id = %s'
-        tags = rt.dbcursor.execute(sql)
-        for tag_id in rt.dbcursor:
+        tags = self.dbcursor.execute(sql)
+        for tag_id in self.dbcursor:
             rt_tag = RTTag(rt.db, tag_id)
             yield rt_tag
 
 class RTTag(RTObject):
     def __init__(self, dbobject, tag_id):
-        rt = Racktables(dbobject)
+        self.rt = Racktables(dbobject)
+        self.db = dbobject
+        self.dbcursor = self.db.cursor()
 
         self._id = tag_id
         sql = 'select parent_id, tag from TagTree where id = %s'
         (
             self._parent_id,
             self._tag
-        ) = rt.db_query_one(sql, (tag_id,))
+        ) = self.rt.db_query_one(sql, (tag_id,))
 
     def __repr__(self):
         return self._tag
 
     def parent(self):
-        return RTTag(rt.db, self._parent_id)
+        return RTTag(self.db, self._parent_id)
 
     # Change name of tag
     @property
@@ -658,4 +663,4 @@ class RTTag(RTObject):
     @Tag.setter
     def Tag(self, new_name):
         sql = 'update TagTree set tag = %s where id = %s'
-        rt.dbcursor.execute(sql, (new_name, self._id,))
+        self.dbcursor.execute(sql, (new_name, self._id,))
