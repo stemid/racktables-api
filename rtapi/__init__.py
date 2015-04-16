@@ -605,7 +605,7 @@ class RTObject(Racktables):
             self._asset_no,
             self._has_problems,
             self._comment
-        ) = rt.db_query_one(sql, (object_id,))
+        ) = self.rt.db_query_one(sql, (object_id,))
 
     def __repr__(self):
         return self._name
