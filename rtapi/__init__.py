@@ -633,7 +633,7 @@ class RTObject(Racktables):
         sql = 'select tag_id from TagStorage where entity_id = %s'
         tags = self.dbcursor.execute(sql, (self._id,))
         for tag_id in self.dbcursor:
-            rt_tag = RTTag(rt.db, tag_id)
+            rt_tag = RTTag(self.db, tag_id)
             yield rt_tag
 
 class RTTag(RTObject):
