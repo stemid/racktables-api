@@ -16,7 +16,8 @@ import MySQLdb
 import rtapi
 
 config = ConfigParser()
-config.read(['import_vms.cfg', './import_vms.cfg'])
+config.readfp(open('import_vms.cfg'))
+config.read(['import_vms.cfg.local'])
 
 with open(vm_file, 'rb') as csvfile:
     conn = MySQLdb.connect(
@@ -36,7 +37,7 @@ with open(vm_file, 'rb') as csvfile:
         vm_name = line['Name']
         vm_label = line['Name']
         vm_interfaces = line['NIC'].split(',')
-        vm_ip-addresses = line['IP'].split(',')
+        vm_ipaddresses = line['IP'].split(',')
         vm_vlans = line['VLAN'].split(',')
 
         # Get the VM type ID
@@ -84,7 +85,7 @@ with open(vm_file, 'rb') as csvfile:
             if port_id:
                 print('Updated object %s with interface %s' % (vm_name, ifname))
 
-        for ipaddrs in vm_ip-addresses:
+        for ipaddrs in vm_ipaddresses:
             # See if ipaddrs is valid
             try:
                 _ip = ipaddr.IPv4Network('%s/24' % ipaddrs)
