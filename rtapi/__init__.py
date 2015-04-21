@@ -616,10 +616,15 @@ class RTObject(Racktables):
         VALUES (%s,'script',now(),%s)'''
         self.rt.db_insert(sql, (self._id, message,))
 
-    def UpdateName(self, name):
+    @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, new_name):
         old_name = self._name
         sql = "UPDATE Object SET name = '%s' where id = %s"
-        self.rt.db_insert(sql, (name, object_id,))
+        self.rt.db_insert(sql, (new_name, object_id,))
         self.InsertLog(self._id, 'Name changed from %s to %s' % (
             old_name, name
         ))
