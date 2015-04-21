@@ -104,7 +104,7 @@ class Racktables(object):
             )
             yield _ip_network
 
-    def ObjectExistST(self,service_tag):
+    def ObjectExistST(self, service_tag):
         '''Check if object exist in database based on asset_no'''
         sql = 'SELECT name FROM Object WHERE asset_no = %s'
         if self.db_query_one(sql, (service_tag,)) == None:
@@ -112,14 +112,14 @@ class Racktables(object):
         else:
             return True
     
-    def ObjectExistName(self,name):
+    def ObjectExistName(self, name):
         '''Check if object exist in database based on name'''
         sql = 'select id from Object where name = %s'
         self.dbcursor.execute(sql, (name,))
         object_id = self.dbcursor.fetchone()
         return RTObject(self.db, object_id)
 
-    def ObjectExistSTName(self,name,asset_no):
+    def ObjectExistSTName(self, name, asset_no):
         '''Check if object exist in database based on name'''
         sql = "SELECT id FROM Object WHERE name = %s AND asset_no = %s"
         if self.db_query_one(sql, (name, asset_no,)) == None:
@@ -127,7 +127,7 @@ class Racktables(object):
         else:
             return True
 
-    def AddObject(self,name,server_type_id,asset_no,label):
+    def AddObject(self, name, server_type_id, asset_no, label):
         '''Add new object to racktables'''
         self.db_insert('''
                        insert into Object 
