@@ -115,7 +115,7 @@ class Racktables(object):
     def ObjectExistName(self,name):
         '''Check if object exist in database based on name'''
         sql = 'select id from Object where name = %s'
-        self.dbcursor.execute(sql)
+        self.dbcursor.execute(sql, (name,))
         object_id = self.dbcursor.fetchone()
         return RTObject(self.db, object_id)
 
