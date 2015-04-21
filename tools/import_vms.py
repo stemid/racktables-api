@@ -21,10 +21,10 @@ config.read(['import_vms.cfg.local'])
 
 with open(config.get('DEFAULT', 'vm_file'), 'rb') as csvfile:
     conn = MySQLdb.connect(
-        host=config.get('DEFAULT', 'db_host'), 
-        user=config.get('DEFAULT', 'db_user'), 
-        passwd=config.get('DEFAULT', 'db_pass'), 
-        db=config.get('DEFAULT', 'db_name')
+        host = config.get('DEFAULT', 'db_host'), 
+        user = config.get('DEFAULT', 'db_user'), 
+        passwd = config.get('DEFAULT', 'db_pass'), 
+        db = config.get('DEFAULT', 'db_name')
     )
     rt = rtapi.Racktables(conn)
 
