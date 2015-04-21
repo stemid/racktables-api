@@ -19,7 +19,7 @@ config = ConfigParser()
 config.readfp(open('import_vms.cfg'))
 config.read(['import_vms.cfg.local'])
 
-with open(vm_file, 'rb') as csvfile:
+with open(config.get('DEFAULT', 'vm_file'), 'rb') as csvfile:
     conn = MySQLdb.connect(
         host=config.get('DEFAULT', 'db_host'), 
         user=config.get('DEFAULT', 'db_user'), 
