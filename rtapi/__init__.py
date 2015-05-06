@@ -641,6 +641,13 @@ class RTObject(Racktables):
             rt_tag = RTTag(self.db, tag_id)
             yield rt_tag
 
+    def IPv4Allocations(self):
+        sql = 'select ip from IPv4Allocation where object_id = %s'
+        tags = self.dbcursor.execute(sql, (self._id,))
+        for ip in self.dbcursor:
+            allocation = IPv4Allocation(self.db, ip)
+            yield allocation
+
 class RTTag(RTObject):
     def __init__(self, dbobject, tag_id):
         self.rt = Racktables(dbobject)
@@ -669,3 +676,24 @@ class RTTag(RTObject):
     def Tag(self, new_name):
         sql = 'update TagTree set tag = %s where id = %s'
         self.dbcursor.execute(sql, (new_name, self._id,))
+
+class IPv4Allocation(RTObject):
+    def __init__(self, dbobject, ip):
+        self.rt = Racktables(dbobject)
+        self.db = dbobject
+        self.dbcursor = self.db.cursor()
+
+        self._id = ip
+        sql = 'select object_id, INET_NTOA(ip), name, type from IPv4Allocation where ip = %s'
+        (
+            self._object_id,
+            self._ip,
+            self._name,
+            self._type
+        ) = self.rt.db_query_one(sql, (ip,))
+
+    def __repr__(self):
+        return self._ip
+
+    def Object(self):
+        return RTObject(self.db, self._object_id)
