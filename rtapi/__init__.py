@@ -93,15 +93,10 @@ class Racktables(object):
             yield (object_id, object_name)
 
     def IPv4Networks(self):
-        sql = 'select INET_NTOA(ip),mask,name,comment from IPv4Network'
+        sql = 'select id from IPv4Network'
         networks = self.dbcursor.execute(sql)
         for row in self.dbcursor:
-            _ip_network = IPv4Network(
-                ip = row[0],
-                mask = row[1],
-                name = row[2],
-                comment = row[3]
-            )
+            _ip_network = IPv4Network(self.db, row[0])
             yield _ip_network
 
     def ObjectExistST(self, service_tag):
@@ -573,17 +568,6 @@ class Racktables(object):
         sql = "SELECT object_id FROM AttributeValue WHERE attr_id = 2 AND uint_value = 994"
         return self.db_query_all(sql)
 
-class IPv4Network(Racktables):
-    # TODO: This should only require the ID of the network as argument.
-    def __init__(self, dbobject, **args):
-        self.ip = args['ip']
-        self.mask = args['mask']
-        self.name = args['name']
-        self.comment = args['comment']
-
-    def __repr__(self):
-        return '%s/%s' % (self.ip, self.mask)
-
 class RTObject(Racktables):
     '''This object represents an object in racktables db.'''
 
@@ -697,3 +681,23 @@ class IPv4Allocation(RTObject):
 
     def Object(self):
         return RTObject(self.db, self._object_id)
+
+class IPv4Network(Racktables):
+    # TODO: This should only require the ID of the network as argument.
+    def __init__(self, dbobject, id):
+        self.rt = Racktables(dbobject)
+        self.db = dbobject
+        self.dbcursor = self.db.cursor()
+
+        self._id = id
+        sql = 'select INET_NTOA(ip), mask, name from IPv4Network where id = %s'
+        (
+            self._ip,
+            self._mask,
+            self._name,
+        ) = self.rt.db_query_one(sql, (id,))
+
+
+    def __repr__(self):
+        return '%s/%s' % (self._ip, self._mask)
+
