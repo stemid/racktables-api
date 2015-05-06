@@ -627,10 +627,17 @@ class RTObject(Racktables):
 
     def IPv4Allocations(self):
         sql = 'select ip from IPv4Allocation where object_id = %s'
-        tags = self.dbcursor.execute(sql, (self._id,))
+        self.dbcursor.execute(sql, (self._id,))
         for ip in self.dbcursor:
             allocation = IPv4Allocation(self.db, ip)
             yield allocation
+
+    def Interfaces(self):
+        sql = 'select id from Port where object_id = %s'
+        self.dbcursor.execute(sql, (self._id,))
+        for id in self.dbcursor:
+            interface = Interface(self.db, id)
+            yield interface
 
     def ObjectTypeName(self):
         types = dict(self.ObjectTypes())
@@ -665,6 +672,30 @@ class RTTag(RTObject):
         sql = 'update TagTree set tag = %s where id = %s'
         self.dbcursor.execute(sql, (new_name, self._id,))
 
+class Interface(RTObject):
+    def __init__(self, dbobject, id):
+        self.rt = Racktables(dbobject)
+        self.db = dbobject
+        self.dbcursor = self.db.cursor()
+
+        self._id = id
+        sql = 'select object_id, name, iif_id, type, l2address, reservation_comment, label from Port where id = %s'
+        (
+            self._object_id,
+            self._name,
+            self._iif_id,
+            self._type,
+            self._l2address,
+            self._reservation_comment,
+            self._label
+        ) = self.rt.db_query_one(sql, (id,))
+
+    def __repr__(self):
+        return self._name
+
+    def Object(self):
+        return RTObject(self.db, self._object_id)
+
 class IPv4Allocation(RTObject):
     def __init__(self, dbobject, ip):
         self.rt = Racktables(dbobject)
@@ -687,7 +718,6 @@ class IPv4Allocation(RTObject):
         return RTObject(self.db, self._object_id)
 
 class IPv4Network(Racktables):
-    # TODO: This should only require the ID of the network as argument.
     def __init__(self, dbobject, id):
         self.rt = Racktables(dbobject)
         self.db = dbobject
