@@ -632,6 +632,10 @@ class RTObject(Racktables):
             allocation = IPv4Allocation(self.db, ip)
             yield allocation
 
+    def ObjectTypeName(self):
+        types = dict(self.ObjectTypes())
+        return types[self._objtype_id]
+
 class RTTag(RTObject):
     def __init__(self, dbobject, tag_id):
         self.rt = Racktables(dbobject)
