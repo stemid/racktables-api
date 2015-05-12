@@ -568,6 +568,20 @@ class Racktables(object):
         sql = "SELECT object_id FROM AttributeValue WHERE attr_id = 2 AND uint_value = 994"
         return self.db_query_all(sql)
 
+    def GetRootLocations(self):
+        sql = "SELECT id FROM location where parent_id is NULL"
+        self.dbcursor.execute(sql)
+        for id, in self.dbcursor:
+            location = Location(self.db, id)
+            yield location
+    
+    def GetAllLocations(self):
+        sql = "SELECT id FROM location"
+        self.dbcursor.execute(sql)
+        for id, in self.dbcursor:
+            location = Location(self.db, id)
+            yield location
+
 class RTObject(Racktables):
     '''This object represents an object in racktables db.'''
 
@@ -731,7 +745,36 @@ class IPv4Network(Racktables):
             self._name,
         ) = self.rt.db_query_one(sql, (id,))
 
-
     def __repr__(self):
         return '%s/%s' % (self._ip, self._mask)
 
+class Location(Racktables):
+    def __init__(self, dbobject, id):
+        self.rt = Racktables(dbobject)
+        self.db = dbobject
+        self.dbcursor = self.db.cursor()
+
+        self._id = id
+        sql = 'select name, has_problems, comment, parent_id from location where id = %s'
+        (
+            self._name,
+            self._has_problems,
+            self._comment,
+            self._parent_id,
+        ) = self.rt.db_query_one(sql, (id,))
+
+    def __repr__(self):
+        return self.name
+
+    def Parent(self):
+        parent = None
+        if self._parent_id:
+            parent = Location(self.db, self._parent_id)
+        return ret
+
+    def Children(self):
+        sql = "SELECT id FROM location where parent_id=%s"
+        self.dbcursor.execute(sql, (self._id,))
+        for id, in self.dbcursor:
+            location = Location(self.db, id)
+            yield location
