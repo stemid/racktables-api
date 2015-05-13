@@ -582,6 +582,13 @@ class Racktables(object):
             location = Location(self.db, id)
             yield location
 
+    def Racks(self):
+        sql = 'select id from Rack'
+        self.dbcursor.execute(sql)
+        for id in self.dbcursor:
+            rack = Rack(self.db, id)
+            yield rack
+
 class RTObject(Racktables):
     '''This object represents an object in racktables db.'''
 
@@ -764,7 +771,7 @@ class Location(Racktables):
         ) = self.rt.db_query_one(sql, (id,))
 
     def __repr__(self):
-        return self.name
+        return self._name
 
     def Parent(self):
         parent = None
@@ -778,3 +785,31 @@ class Location(Racktables):
         for id, in self.dbcursor:
             location = Location(self.db, id)
             yield location
+
+class Rack(Racktables):
+    def __init__(self, dbobject, id):
+        self.rt = Racktables(dbobject)
+        self.db = dbobject
+        self.dbcursor = self.db.cursor()
+
+        self._id = id
+        sql = 'select name, asset_no, has_problems, comment, height, sort_order, row_id, row_name, location_id, location_name from rack where id = %s'
+        (
+            self._name,
+            self._asset_no,
+            self._has_problems,
+            self._comment,
+            self._height,
+            self._sort_order,
+            self._row_id,
+            self._row_name,
+            self._location_id,
+            self._location_name,
+        ) = self.rt.db_query_one(sql, (id,))
+
+    def __repr__(self):
+        return self._name
+
+    def Location(self):
+        return Location(self.db, self._location_id)
+
