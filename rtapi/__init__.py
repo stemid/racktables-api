@@ -583,11 +583,18 @@ class Racktables(object):
             yield location
 
     def Racks(self):
-        sql = 'select id from Rack'
+        sql = 'select id from rack'
+        self.dbcursor.execute(sql)
+        for row in self.dbcursor:
+            rack = Rack(self.db, row[0])
+            yield rack
+
+    def RackObjects(self):
+        sql = 'select id from rackobject'
         self.dbcursor.execute(sql)
         for id in self.dbcursor:
-            rack = Rack(self.db, id)
-            yield rack
+            obj = RTObject(self.db, id)
+            yield obj
 
 class RTObject(Racktables):
     '''This object represents an object in racktables db.'''
@@ -664,6 +671,21 @@ class RTObject(Racktables):
         types = dict(self.ObjectTypes())
         return types[self._objtype_id]
 
+    def RackSpace(self):
+        sql = 'select rack_id, unit_no, atom, state from RackSpace where object_id = %s'
+        self.dbcursor.execute(sql, (self._id,))
+        ret = {}
+        for rack_id, unit_no, atom, state in self.dbcursor:
+            if rack_id not in ret:
+                rack = Rack(self.db, rack_id)
+                ret[rack_id] = {'rack': rack, 'units': {}}
+            rack_data = ret.get(rack_id)
+            if unit_no not in rack_data['units']:
+                rack_data['units'][unit_no] = {}
+            rack_data['units'][unit_no][atom] = state
+        return ret
+
+
 class RTTag(RTObject):
     def __init__(self, dbobject, tag_id):
         self.rt = Racktables(dbobject)
@@ -716,6 +738,16 @@ class Interface(RTObject):
 
     def Object(self):
         return RTObject(self.db, self._object_id)
+
+    def TypeName(self):
+        ret = None
+        if self._type:
+            sql = 'select id, oif_name from PortOuterInterface where id = %s'
+            (
+                id,
+                ret,
+            ) = self.rt.db_query_one(sql, (self._type,))
+        return ret
 
 class IPv4Allocation(RTObject):
     def __init__(self, dbobject, ip):
