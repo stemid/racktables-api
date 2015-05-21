@@ -419,6 +419,15 @@ class Racktables(object):
 
         return getted_id
 
+    def GetDictionaryValue(self, dict_key):
+        sql = "SELECT dict_value FROM Dictionary WHERE dict_key=%s"
+        result = self.db_query_one(sql, (dict_key,))
+        if result != None:
+            getted_id = result[0]
+        else:
+            getted_id = None
+        return getted_id
+
     def CleanVirtuals(self,object_id,virtual_servers):
         '''Clean dead virtuals from hypervisor. virtual_servers is list of active virtual servers on hypervisor (object_id)'''
 
@@ -685,6 +694,35 @@ class RTObject(Racktables):
             rack_data['units'][unit_no][atom] = state
         return ret
 
+    def _GetAttributeIDNameDict(self):
+        sql = 'select id, type, name from Attribute'
+        self.dbcursor.execute(sql)
+        ret = {}
+        for id, type, name in self.dbcursor:
+            ret[id] = (type, name)
+        return ret
+
+    def GetAttributes(self):
+        attr_id_name_dict = self._GetAttributeIDNameDict()
+        sql = 'select object_tid, attr_id, string_value, uint_value, float_value from AttributeValue where object_id = %s'
+        self.dbcursor.execute(sql, (self._id,))
+        ret = {}
+        for object_tid, attr_id, string_value, uint_value, float_value in self.dbcursor:
+            name = attr_id_name_dict[attr_id][1]
+            if string_value is not None:
+                ret[name] = string_value
+            elif uint_value is not None:
+                ret[name] = uint_value
+        for key in ret:
+            if type(ret[key]) not in [str, unicode]:
+                ret[key] = self.GetDictionaryValue(ret[key])
+            if type(ret[key]) in [str, unicode]:
+                ret[key] = ret[key].replace('%GPASS%', ' ') 
+                ret[key] = ret[key].replace('%GSKIP%', ' ') 
+            if ret[key] is None:
+                ret[key] = ''
+        return ret
+
 
 class RTTag(RTObject):
     def __init__(self, dbobject, tag_id):
@@ -748,6 +786,18 @@ class Interface(RTObject):
                 ret,
             ) = self.rt.db_query_one(sql, (self._type,))
         return ret
+
+    def LinkedInterfaces(self):
+        sql = 'select porta, portb from Link where porta = %s'
+        self.dbcursor.execute(sql, (self._id,))
+        for porta, portb in self.dbcursor:
+            interface = Interface(self.db, portb)
+            yield interface
+        sql = 'select porta, portb from Link where portb = %s'
+        self.dbcursor.execute(sql, (self._id,))
+        for porta, portb in self.dbcursor:
+            interface = Interface(self.db, porta)
+            yield interface
 
 class IPv4Allocation(RTObject):
     def __init__(self, dbobject, ip):
