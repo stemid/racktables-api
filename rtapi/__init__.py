@@ -849,6 +849,34 @@ class IPv4Network(Racktables):
     def __repr__(self):
         return '%s/%s' % (self._ip, self._mask)
 
+    def VLAN(self):
+        sql = 'select domain_id, vlan_id from VLANIPv4 where ipv4net_id = %s'
+        self.dbcursor.execute(sql, (self._id,))
+        for domain_id, vlan_id in self.dbcursor:
+            vlan = IPv4VLAN(self.db, vlan_id)
+            yield vlan
+
+class IPv4VLAN(Racktables):
+    def __init__(self, dbobject, id):
+        self.rt = Racktables(dbobject)
+        self.db = dbobject
+        self.dbcursor = self.db.cursor()
+
+        self._id = id
+        sql = 'select domain_id from VLANIPv4 where vlan_id = %s'
+        (
+            self._domain_id,
+        ) = self.rt.db_query_one(sql, (id,))
+        sql = 'select vlan_type, vlan_descr from VLANDescription where vlan_id = %s'
+        (
+            self._vlan_type,
+            self._vlan_descr,
+        ) = self.rt.db_query_one(sql, (id,))
+
+    def __repr__(self):
+        return '%s/%s' % (self._ip, self._mask)
+
+
 class Location(Racktables):
     def __init__(self, dbobject, id):
         self.rt = Racktables(dbobject)
