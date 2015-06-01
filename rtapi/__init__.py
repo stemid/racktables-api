@@ -723,6 +723,18 @@ class RTObject(Racktables):
                 ret[key] = ''
         return ret
 
+    def LinkedObjects(self):
+        sql = 'select child_entity_type, child_entity_id from EntityLink where parent_entity_id = %s and child_entity_type="object"'
+        res = self.dbcursor.execute(sql, (self._id,))
+        for child_entity_type, child_entity_id in self.dbcursor:
+            obj = RTObject(self.db, child_entity_id)
+            yield obj
+        sql = 'select parent_entity_type, parent_entity_id from EntityLink where child_entity_id = %s and parent_entity_type="object"'
+        res = self.dbcursor.execute(sql, (self._id,))
+        for parent_entity_type, parent_entity_id in self.dbcursor:
+            obj = RTObject(self.db, parent_entity_id)
+            yield obj
+
 
 class RTTag(RTObject):
     def __init__(self, dbobject, tag_id):
