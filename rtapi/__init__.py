@@ -93,15 +93,10 @@ class Racktables(object):
             yield (object_id, object_name)
 
     def IPv4Networks(self):
-        sql = 'select INET_NTOA(ip),mask,name,comment from IPv4Network'
+        sql = 'select id from IPv4Network'
         networks = self.dbcursor.execute(sql)
         for row in self.dbcursor:
-            _ip_network = IPv4Network(
-                ip = row[0],
-                mask = row[1],
-                name = row[2],
-                comment = row[3]
-            )
+            _ip_network = IPv4Network(self.db, row[0])
             yield _ip_network
 
     def ObjectExistST(self, service_tag):
@@ -424,6 +419,15 @@ class Racktables(object):
 
         return getted_id
 
+    def GetDictionaryValue(self, dict_key):
+        sql = "SELECT dict_value FROM Dictionary WHERE dict_key=%s"
+        result = self.db_query_one(sql, (dict_key,))
+        if result != None:
+            getted_id = result[0]
+        else:
+            getted_id = None
+        return getted_id
+
     def CleanVirtuals(self,object_id,virtual_servers):
         '''Clean dead virtuals from hypervisor. virtual_servers is list of active virtual servers on hypervisor (object_id)'''
 
@@ -573,16 +577,33 @@ class Racktables(object):
         sql = "SELECT object_id FROM AttributeValue WHERE attr_id = 2 AND uint_value = 994"
         return self.db_query_all(sql)
 
-class IPv4Network(Racktables):
-    # TODO: This should only require the ID of the network as argument.
-    def __init__(self, dbobject, **args):
-        self.ip = args['ip']
-        self.mask = args['mask']
-        self.name = args['name']
-        self.comment = args['comment']
+    def GetRootLocations(self):
+        sql = "SELECT id FROM location where parent_id is NULL"
+        self.dbcursor.execute(sql)
+        for id, in self.dbcursor:
+            location = Location(self.db, id)
+            yield location
+    
+    def GetAllLocations(self):
+        sql = "SELECT id FROM location"
+        self.dbcursor.execute(sql)
+        for id, in self.dbcursor:
+            location = Location(self.db, id)
+            yield location
 
-    def __repr__(self):
-        return '%s/%s' % (self.ip, self.mask)
+    def Racks(self):
+        sql = 'select id from rack'
+        self.dbcursor.execute(sql)
+        for row in self.dbcursor:
+            rack = Rack(self.db, row[0])
+            yield rack
+
+    def RackObjects(self):
+        sql = 'select id from rackobject'
+        self.dbcursor.execute(sql)
+        for id in self.dbcursor:
+            obj = RTObject(self.db, id)
+            yield obj
 
 class RTObject(Racktables):
     '''This object represents an object in racktables db.'''
@@ -641,6 +662,80 @@ class RTObject(Racktables):
             rt_tag = RTTag(self.db, tag_id)
             yield rt_tag
 
+    def IPv4Allocations(self):
+        sql = 'select ip from IPv4Allocation where object_id = %s'
+        self.dbcursor.execute(sql, (self._id,))
+        for ip in self.dbcursor:
+            allocation = IPv4Allocation(self.db, ip)
+            yield allocation
+
+    def Interfaces(self):
+        sql = 'select id from Port where object_id = %s'
+        self.dbcursor.execute(sql, (self._id,))
+        for id in self.dbcursor:
+            interface = Interface(self.db, id)
+            yield interface
+
+    def ObjectTypeName(self):
+        types = dict(self.ObjectTypes())
+        return types[self._objtype_id]
+
+    def RackSpace(self):
+        sql = 'select rack_id, unit_no, atom, state from RackSpace where object_id = %s'
+        self.dbcursor.execute(sql, (self._id,))
+        ret = {}
+        for rack_id, unit_no, atom, state in self.dbcursor:
+            if rack_id not in ret:
+                rack = Rack(self.db, rack_id)
+                ret[rack_id] = {'rack': rack, 'units': {}}
+            rack_data = ret.get(rack_id)
+            if unit_no not in rack_data['units']:
+                rack_data['units'][unit_no] = {}
+            rack_data['units'][unit_no][atom] = state
+        return ret
+
+    def _GetAttributeIDNameDict(self):
+        sql = 'select id, type, name from Attribute'
+        self.dbcursor.execute(sql)
+        ret = {}
+        for id, type, name in self.dbcursor:
+            ret[id] = (type, name)
+        return ret
+
+    def GetAttributes(self):
+        attr_id_name_dict = self._GetAttributeIDNameDict()
+        sql = 'select object_tid, attr_id, string_value, uint_value, float_value from AttributeValue where object_id = %s'
+        self.dbcursor.execute(sql, (self._id,))
+        ret = {}
+        for object_tid, attr_id, string_value, uint_value, float_value in self.dbcursor:
+            name = attr_id_name_dict[attr_id][1]
+            if string_value is not None:
+                ret[name] = string_value
+            elif uint_value is not None:
+                ret[name] = uint_value
+        for key in ret:
+            if type(ret[key]) not in [str, unicode]:
+                ret[key] = self.GetDictionaryValue(ret[key])
+            if type(ret[key]) in [str, unicode]:
+                ret[key] = ret[key].replace('%GPASS%', ' ') 
+                ret[key] = ret[key].replace('%GSKIP%', ' ') 
+            if ret[key] is None:
+                ret[key] = ''
+        return ret
+
+    def LinkedObjects(self):
+        sql = 'select child_entity_type, child_entity_id from EntityLink where parent_entity_id = %s and child_entity_type="object"'
+        res = self.dbcursor.execute(sql, (self._id,))
+        for child_entity_type, child_entity_id in self.dbcursor:
+            obj = RTObject(self.db, child_entity_id)
+            yield obj
+        sql = 'select parent_entity_type, parent_entity_id from EntityLink where child_entity_id = %s and parent_entity_type="object"'
+        res = self.dbcursor.execute(sql, (self._id,))
+        for parent_entity_type, parent_entity_id in self.dbcursor:
+            obj = RTObject(self.db, parent_entity_id)
+            yield obj
+
+
 class RTTag(RTObject):
     def __init__(self, dbobject, tag_id):
         self.rt = Racktables(dbobject)
@@ -669,3 +764,174 @@ class RTTag(RTObject):
     def Tag(self, new_name):
         sql = 'update TagTree set tag = %s where id = %s'
         self.dbcursor.execute(sql, (new_name, self._id,))
+
+class Interface(RTObject):
+    def __init__(self, dbobject, id):
+        self.rt = Racktables(dbobject)
+        self.db = dbobject
+        self.dbcursor = self.db.cursor()
+
+        self._id = id
+        sql = 'select object_id, name, iif_id, type, l2address, reservation_comment, label from Port where id = %s'
+        (
+            self._object_id,
+            self._name,
+            self._iif_id,
+            self._type,
+            self._l2address,
+            self._reservation_comment,
+            self._label
+        ) = self.rt.db_query_one(sql, (id,))
+
+    def __repr__(self):
+        return self._name
+
+    def Object(self):
+        return RTObject(self.db, self._object_id)
+
+    def TypeName(self):
+        ret = None
+        if self._type:
+            sql = 'select id, oif_name from PortOuterInterface where id = %s'
+            (
+                id,
+                ret,
+            ) = self.rt.db_query_one(sql, (self._type,))
+        return ret
+
+    def LinkedInterfaces(self):
+        sql = 'select porta, portb from Link where porta = %s'
+        self.dbcursor.execute(sql, (self._id,))
+        for porta, portb in self.dbcursor:
+            interface = Interface(self.db, portb)
+            yield interface
+        sql = 'select porta, portb from Link where portb = %s'
+        self.dbcursor.execute(sql, (self._id,))
+        for porta, portb in self.dbcursor:
+            interface = Interface(self.db, porta)
+            yield interface
+
+class IPv4Allocation(RTObject):
+    def __init__(self, dbobject, ip):
+        self.rt = Racktables(dbobject)
+        self.db = dbobject
+        self.dbcursor = self.db.cursor()
+
+        self._id = ip
+        sql = 'select object_id, INET_NTOA(ip), name, type from IPv4Allocation where ip = %s'
+        (
+            self._object_id,
+            self._ip,
+            self._name,
+            self._type
+        ) = self.rt.db_query_one(sql, (ip,))
+
+    def __repr__(self):
+        return self._ip
+
+    def Object(self):
+        return RTObject(self.db, self._object_id)
+
+class IPv4Network(Racktables):
+    def __init__(self, dbobject, id):
+        self.rt = Racktables(dbobject)
+        self.db = dbobject
+        self.dbcursor = self.db.cursor()
+
+        self._id = id
+        sql = 'select INET_NTOA(ip), mask, name from IPv4Network where id = %s'
+        (
+            self._ip,
+            self._mask,
+            self._name,
+        ) = self.rt.db_query_one(sql, (id,))
+
+    def __repr__(self):
+        return '%s/%s' % (self._ip, self._mask)
+
+    def VLAN(self):
+        sql = 'select domain_id, vlan_id from VLANIPv4 where ipv4net_id = %s'
+        self.dbcursor.execute(sql, (self._id,))
+        for domain_id, vlan_id in self.dbcursor:
+            vlan = IPv4VLAN(self.db, vlan_id)
+            yield vlan
+
+class IPv4VLAN(Racktables):
+    def __init__(self, dbobject, id):
+        self.rt = Racktables(dbobject)
+        self.db = dbobject
+        self.dbcursor = self.db.cursor()
+
+        self._id = id
+        sql = 'select domain_id from VLANIPv4 where vlan_id = %s'
+        (
+            self._domain_id,
+        ) = self.rt.db_query_one(sql, (id,))
+        sql = 'select vlan_type, vlan_descr from VLANDescription where vlan_id = %s'
+        (
+            self._vlan_type,
+            self._vlan_descr,
+        ) = self.rt.db_query_one(sql, (id,))
+
+    def __repr__(self):
+        return '%s/%s' % (self._ip, self._mask)
+
+
+class Location(Racktables):
+    def __init__(self, dbobject, id):
+        self.rt = Racktables(dbobject)
+        self.db = dbobject
+        self.dbcursor = self.db.cursor()
+
+        self._id = id
+        sql = 'select name, has_problems, comment, parent_id from location where id = %s'
+        (
+            self._name,
+            self._has_problems,
+            self._comment,
+            self._parent_id,
+        ) = self.rt.db_query_one(sql, (id,))
+
+    def __repr__(self):
+        return self._name
+
+    def Parent(self):
+        parent = None
+        if self._parent_id:
+            parent = Location(self.db, self._parent_id)
+        return ret
+
+    def Children(self):
+        sql = "SELECT id FROM location where parent_id=%s"
+        self.dbcursor.execute(sql, (self._id,))
+        for id, in self.dbcursor:
+            location = Location(self.db, id)
+            yield location
+
+class Rack(Racktables):
+    def __init__(self, dbobject, id):
+        self.rt = Racktables(dbobject)
+        self.db = dbobject
+        self.dbcursor = self.db.cursor()
+
+        self._id = id
+        sql = 'select name, asset_no, has_problems, comment, height, sort_order, row_id, row_name, location_id, location_name from rack where id = %s'
+        (
+            self._name,
+            self._asset_no,
+            self._has_problems,
+            self._comment,
+            self._height,
+            self._sort_order,
+            self._row_id,
+            self._row_name,
+            self._location_id,
+            self._location_name,
+        ) = self.rt.db_query_one(sql, (id,))
+
+    def __repr__(self):
+        return self._name
+
+    def Location(self):
+        return Location(self.db, self._location_id)
+
