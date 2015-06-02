@@ -21,7 +21,7 @@ foreach($vm in $vms) {
       $_.Type
   }) -join ','
   $row.OperatingSystem = $vm.Guest.OSFullName
-  $row.NIC = ($vm.Guest.Nics | foreach-object {$_.Device}) -join ','
+  $row.NIC = $vm.Guest.Nics
   $row.IP = $vm.Guest.IPAddress
   $row.VLAN = ($vm | get-networkadapter)
   # Tags requires PowerCLI 5.5 and vSphere 5.1.
