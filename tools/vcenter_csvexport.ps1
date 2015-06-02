@@ -9,6 +9,7 @@ Set-PowerCLIConfiguration -invalidCertificateAction 'ignore' -confirm:$false
 Connect-VIServer -Server 10.220.100.220 -Protocol https
 
 $customer_tag = 'Customer Names'
+$output_filename = "C:\vSphere scripts/VM CSV export/vcenter.csv"
 $vms = (get-vm)
 $results = @()
 
@@ -42,4 +43,4 @@ foreach($vm in $vms) {
   $results += $row
 }
 
-$results | export-csv -path "C:\vSphere scripts\VM CSV export\racktables.csv" -UseCulture -NoTypeInformation
+$results | export-csv -path $output_filename -UseCulture -NoTypeInformation
