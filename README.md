@@ -1,5 +1,7 @@
 # Racktables Python API
 
+**Abandoned in favor of [Siptrack](https://github.com/sii/siptrackweb).**
+
 This was forked from https://github.com/RackTables/racktables-contribs/tree/master/rtapi
 
 I wanted to expand on the original rtapi and didn't like the coding standard for sql queries. 
